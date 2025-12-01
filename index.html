@@ -290,9 +290,7 @@
             
             const dist = Math.hypot(elCenter.x - targetCenter.x, elCenter.y - targetCenter.y);
             
-            // Difficulty: Reduce snap distance every 10 levels
-            // Level 1-10: 80px | Level 11-20: 60px | Level 21-30: 40px | Level 31+: 30px
-            const snapThreshold = Math.max(30, 80 - Math.floor((level - 1) / 10) * 20);
+            const snapThreshold = Math.max(1, 80 - 2 * (level - 1));
             if (dist < snapThreshold) {
                 // Match!
                 playSound('success');
