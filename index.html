@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Color Blocks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        overscroll-behavior: none;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .shape-transition {
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-sky-50 text-slate-800 h-screen w-screen overflow-hidden flex flex-col selection:bg-pink-200">
+    <!-- Header -->
+    <header class="p-4 flex justify-between items-center bg-white/50 backdrop-blur-md shadow-sm z-10 shrink-0">
+        <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
+            <span class="text-pink-500">Color</span> Blocks
+        </h1>
+        <div id="level-indicator" class="text-lg font-semibold bg-white px-4 py-1 rounded-full shadow-sm text-slate-600">
+            Level 1
+        </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="flex-1 relative flex flex-col items-center justify-center p-4">
+        <!-- Success Modal -->
+        <div id="modal-overlay" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+            <div id="modal-content" class="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full text-center border-4 border-yellow-300 transform scale-90 transition-transform duration-300">
+                <div class="flex justify-center mb-4">
+                    <svg class="w-16 h-16 text-yellow-400 fill-yellow-400 animate-bounce" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Great Job!</h2>
+                
+                <div class="min-h-[80px] flex items-center justify-center p-2">
+                    <p id="fun-fact-text" class="text-lg text-slate-600 font-medium italic">Loading fun fact...</p>
+                </div>
+
+                <button id="next-level-btn" class="mt-6 w-full bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white font-bold py-4 px-8 rounded-2xl text-xl shadow-lg transform transition active:scale-95">
+                    Next Level
+                </button>
+            </div>
+        </div>
+
+        <!-- Targets Grid -->
+        <div id="targets-container" class="flex flex-wrap justify-center gap-8 md:gap-16 w-full max-w-4xl items-center">
+            <!-- Injected by JS -->
+        </div>
+    </main>
+
+    <!-- Draggable Dock -->
+    <footer class="w-full bg-white/80 border-t border-slate-200 p-6 md:p-8 backdrop-blur-lg shrink-0 z-20">
+        <div id="draggables-container" class="flex justify-center mb-10 gap-6 md:gap-12 items-center min-h-[100px]">
+            <!-- Injected by JS -->
+        </div>
+    </footer>
+
+    <!-- Background Decor -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10 opacity-30">
+        <div class="absolute top-10 left-10 w-64 h-64 bg-yellow-200 rounded-full blur-3xl mix-blend-multiply animate-pulse"></div>
+        <div class="absolute bottom-10 right-10 w-64 h-64 bg-pink-200 rounded-full blur-3xl mix-blend-multiply animate-pulse delay-700"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-100 rounded-full blur-3xl mix-blend-multiply"></div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenAI } from "@google/genai";
+
+        // --- Constants ---
+        const SHAPE_PATHS = {
+            SQUARE: "M 10 10 H 90 V 90 H 10 Z",
+            CIRCLE: "M 50, 50 m -40, 0 a 40,40 0 1,0 80,0 a 40,40 0 1,0 -80,0",
+            TRIANGLE: "M 50 15 L 90 85 H 10 Z",
+            STAR: "M 50 10 L 61 38 H 92 L 67 56 L 76 86 L 50 70 L 24 86 L 33 56 L 8 38 H 39 Z",
+            HEXAGON: "M 25 10 L 75 10 L 95 50 L 75 90 L 25 90 L 5 50 Z",
+            HEART: "M 50 88.9 L 42.7 82.2 C 16.8 58.7 0 43.4 0 25.4 C 0 10.9 11.4 0 26 0 C 34.2 0 42.1 4.5 46.7 11.6 L 50 16.7 L 53.3 11.6 C 57.9 4.5 65.8 0 74 0 C 88.6 0 100 10.9 100 25.4 C 100 43.4 83.2 58.7 57.3 82.2 L 50 88.9 Z"
+        };
+
+        const COLORS = [
+            { hex: '#ef4444', name: 'Red' },
+            { hex: '#3b82f6', name: 'Blue' },
+            { hex: '#22c55e', name: 'Green' },
+            { hex: '#eab308', name: 'Yellow' },
+            { hex: '#a855f7', name: 'Purple' },
+            { hex: '#f97316', name: 'Orange' },
+            { hex: '#ec4899', name: 'Pink' },
+            { hex: '#06b6d4', name: 'Cyan' },
+        ];
+
+        // --- Audio ---
+        const playSound = (type) => {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            const now = ctx.currentTime;
+
+            if (type === 'pickup') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(500, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'drop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'success') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554, now + 0.1);
+                osc.frequency.setValueAtTime(659, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'complete') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.15);
+                osc.frequency.setValueAtTime(783.99, now + 0.3);
+                osc.frequency.setValueAtTime(1046.50, now + 0.45);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 1.0);
+                osc.start(now);
+                osc.stop(now + 1.0);
+            }
+        };
+
+        // --- Game State ---
+        let level = 1;
+        let shapes = [];
+        let placedShapes = new Set();
+        let currentDrag = null;
+
+        // --- DOM References ---
+        const targetsContainer = document.getElementById('targets-container');
+        const draggablesContainer = document.getElementById('draggables-container');
+        const levelIndicator = document.getElementById('level-indicator');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        const funFactText = document.getElementById('fun-fact-text');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+
+        // --- SVG Factory ---
+        const getShapeSVG = (type, color, isOutline) => {
+            const fill = isOutline ? 'transparent' : color;
+            const stroke = isOutline ? color : 'none';
+            const strokeWidth = isOutline ? "4" : "0";
+            const strokeDash = isOutline ? "8,6" : "none";
+            return `
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-sm" style="overflow: visible;">
+                    <path d="${SHAPE_PATHS[type]}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDash}" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            `;
+        };
+
+        // --- Level Management ---
+        const initLevel = () => {
+            // Reset UI
+            targetsContainer.innerHTML = '';
+            draggablesContainer.innerHTML = '';
+            placedShapes.clear();
+            
+            modalOverlay.classList.add('hidden');
+            modalOverlay.classList.remove('opacity-100');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-90');
+            
+            levelIndicator.textContent = `Level ${level}`;
+
+            // Generate Logic
+            const count = Math.min(2 + Math.floor((level - 1) / 2), 5);
+            const availableShapes = Object.keys(SHAPE_PATHS);
+            const availableColors = [...COLORS];
+            shapes = [];
+
+            for (let i = 0; i < count; i++) {
+                const sIdx = Math.floor(Math.random() * availableShapes.length);
+                const type = availableShapes.splice(sIdx, 1)[0];
+                const cIdx = Math.floor(Math.random() * availableColors.length);
+                const colorObj = availableColors.splice(cIdx, 1)[0];
+                shapes.push({ id: `shape-${level}-${i}`, type, color: colorObj.hex, colorName: colorObj.name });
+            }
+
+            // Render Targets
+            shapes.forEach(shape => {
+                const el = document.createElement('div');
+                el.id = `target-${shape.id}`;
+                el.className = "relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center transition-transform duration-300";
+                el.innerHTML = `
+                    <div class="absolute inset-0 opacity-50 pointer-events-none">${getShapeSVG(shape.type, shape.color, true)}</div>
+                    <div class="target-filled opacity-0 transition-opacity duration-300 transform scale-0 z-10 w-full h-full">${getShapeSVG(shape.type, shape.color, false)}</div>
+                `;
+                targetsContainer.appendChild(el);
+            });
+
+            // Render Draggables
+            const shuffled = [...shapes].sort(() => Math.random() - 0.5);
+            shuffled.forEach(shape => {
+                const el = document.createElement('div');
+                el.dataset.id = shape.id;
+                el.className = "w-20 h-20 md:w-28 md:h-28 touch-none cursor-grab active:cursor-grabbing relative shape-transition";
+                el.innerHTML = getShapeSVG(shape.type, shape.color, false);
+                el.addEventListener('pointerdown', handleDragStart);
+                draggablesContainer.appendChild(el);
+            });
+        };
+
+        // --- Interaction ---
+        const handleDragStart = (e) => {
+            const el = e.currentTarget;
+            if (placedShapes.has(el.dataset.id)) return;
+            
+            e.preventDefault();
+            playSound('pickup');
+            
+            // Set styles for dragging
+            el.style.zIndex = 100;
+            el.style.transition = 'none';
+            el.style.transform = 'scale(1.2)';
+            
+            currentDrag = {
+                el,
+                startX: e.clientX,
+                startY: e.clientY,
+                currentX: 0,
+                currentY: 0
+            };
+
+            el.setPointerCapture(e.pointerId);
+            el.addEventListener('pointermove', handleDragMove);
+            el.addEventListener('pointerup', handleDragEnd);
+            el.addEventListener('pointercancel', handleDragEnd);
+        };
+
+        const handleDragMove = (e) => {
+            if (!currentDrag) return;
+            e.preventDefault();
+            const dx = e.clientX - currentDrag.startX;
+            const dy = e.clientY - currentDrag.startY;
+            currentDrag.el.style.transform = `translate(${dx}px, ${dy}px) scale(1.2)`;
+        };
+
+        const handleDragEnd = (e) => {
+            if (!currentDrag) return;
+            const { el } = currentDrag;
+            const id = el.dataset.id;
+            
+            el.releasePointerCapture(e.pointerId);
+            el.removeEventListener('pointermove', handleDragMove);
+            el.removeEventListener('pointerup', handleDragEnd);
+            el.removeEventListener('pointercancel', handleDragEnd);
+            
+            // Collision Detection
+            const elRect = el.getBoundingClientRect();
+            const elCenter = { x: elRect.left + elRect.width / 2, y: elRect.top + elRect.height / 2 };
+            
+            const targetEl = document.getElementById(`target-${id}`);
+            const targetRect = targetEl.getBoundingClientRect();
+            const targetCenter = { x: targetRect.left + targetRect.width / 2, y: targetRect.top + targetRect.height / 2 };
+            
+            const dist = Math.hypot(elCenter.x - targetCenter.x, elCenter.y - targetCenter.y);
+            
+            if (dist < 80) {
+                // Match!
+                playSound('success');
+                placedShapes.add(id);
+                el.style.display = 'none';
+                
+                const filled = targetEl.querySelector('.target-filled');
+                filled.classList.remove('opacity-0', 'scale-0');
+                filled.classList.add('opacity-100', 'scale-100');
+                
+                if (placedShapes.size === shapes.length) handleWin(id);
+            } else {
+                // Miss
+                playSound('drop');
+                el.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                el.style.transform = 'translate(0,0) scale(1)';
+                el.style.zIndex = '';
+            }
+            currentDrag = null;
+        };
+
+        // --- Win State ---
+        const handleWin = async (lastId) => {
+            playSound('complete');
+            setTimeout(() => {
+                modalOverlay.classList.remove('hidden');
+                void modalOverlay.offsetWidth; // force reflow
+                modalOverlay.classList.add('opacity-100');
+                modalContent.classList.remove('scale-90');
+                modalContent.classList.add('scale-100');
+            }, 500);
+
+            funFactText.textContent = "Asking the stars for a fun fact...";
+            const lastShape = shapes.find(s => s.id === lastId);
+            
+            try {
+                const apiKey = process.env.API_KEY;
+                if (!apiKey) throw new Error("No API Key");
+                
+                const ai = new GoogleGenAI({ apiKey });
+                const prompt = `Tell me a single, very short, fun, and educational sentence for a 4-year-old child about a ${lastShape.colorName} ${lastShape.type.toLowerCase()}. Keep it under 15 words. Be enthusiastic!`;
+                
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                });
+                funFactText.textContent = `"${response.text.trim()}"`;
+            } catch (e) {
+                console.error(e);
+                funFactText.textContent = `You matched the ${lastShape.colorName} ${lastShape.type.toLowerCase()}! Great job!`;
+            }
+        };
+
+        nextLevelBtn.addEventListener('click', () => {
+            level++;
+            initLevel();
+        });
+
+        // Start
+        initLevel();
+    </script>
+  </body>
+</html>
