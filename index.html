@@ -31,17 +31,17 @@
 </head>
   <body class="bg-sky-50 text-slate-800 h-screen w-screen overflow-hidden flex flex-col selection:bg-pink-200">
     <!-- Header -->
-    <header class="p-4 flex justify-between items-center bg-white/50 backdrop-blur-md shadow-sm z-10 shrink-0">
-        <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
+    <header class="p-3 md:p-4 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 bg-white/50 backdrop-blur-md shadow-sm z-10 shrink-0">
+        <h1 class="text-xl md:text-2xl font-bold text-slate-700 flex items-center gap-2">
             <span class="text-pink-500">Color</span> Blocks
         </h1>
-        <div id="level-indicator" class="text-lg font-semibold bg-white px-4 py-1 rounded-full shadow-sm text-slate-600">
+        <div id="level-indicator" class="text-base md:text-lg font-semibold bg-white px-3 md:px-4 py-1 rounded-full shadow-sm text-slate-600">
             Level 1
         </div>
     </header>
 
     <!-- Main Game Area -->
-    <main class="flex-1 relative flex flex-col items-center justify-center p-4">
+    <main class="flex-1 relative flex flex-col items-center justify-center p-3 md:p-4 overflow-y-auto">
         <!-- Success Modal -->
         <div id="modal-overlay" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
             <div id="modal-content" class="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full text-center border-4 border-yellow-300 transform scale-90 transition-transform duration-300">
@@ -63,14 +63,14 @@
         </div>
 
         <!-- Targets Grid -->
-        <div id="targets-container" class="flex flex-wrap justify-center gap-8 md:gap-16 w-full max-w-4xl items-center">
+        <div id="targets-container" class="flex flex-col md:flex-row flex-wrap justify-center gap-6 md:gap-8 lg:gap-16 w-full max-w-4xl items-center">
             <!-- Injected by JS -->
         </div>
     </main>
 
     <!-- Draggable Dock -->
-    <footer class="w-full bg-white/80 border-t border-slate-200 p-6 md:p-8 backdrop-blur-lg shrink-0 z-20">
-        <div id="draggables-container" class="flex justify-center mb-10 gap-6 md:gap-12 items-center min-h-[100px]">
+    <footer class="w-full bg-white/80 border-t border-slate-200 p-4 md:p-6 lg:p-8 backdrop-blur-lg shrink-0 z-20">
+        <div id="draggables-container" class="flex flex-col md:flex-row justify-center gap-4 md:gap-6 lg:gap-12 items-center min-h-[100px] mb-4 md:mb-10">
             <!-- Injected by JS -->
         </div>
     </footer>
@@ -230,7 +230,7 @@
             shapes.forEach(shape => {
                 const el = document.createElement('div');
                 el.id = `target-${shape.id}`;
-                el.className = "relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center transition-transform duration-300";
+                el.className = "relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex items-center justify-center transition-transform duration-300";
                 el.innerHTML = `
                     <div class="absolute inset-0 opacity-50 pointer-events-none">${getShapeSVG(shape.type, shape.color, true)}</div>
                     <div class="target-filled opacity-0 transition-opacity duration-300 transform scale-0 z-10 w-full h-full">${getShapeSVG(shape.type, shape.color, false)}</div>
@@ -243,7 +243,7 @@
             shuffled.forEach(shape => {
                 const el = document.createElement('div');
                 el.dataset.id = shape.id;
-                el.className = "w-20 h-20 md:w-28 md:h-28 touch-none cursor-grab active:cursor-grabbing relative shape-transition";
+                el.className = "w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 touch-none cursor-grab active:cursor-grabbing relative shape-transition";
                 el.innerHTML = getShapeSVG(shape.type, shape.color, false);
                 el.addEventListener('pointerdown', handleDragStart);
                 draggablesContainer.appendChild(el);
